@@ -71,8 +71,8 @@ defmodule SlaxWeb.ChatRoomLive do
 
   defp room_link(assigns) do
     ~H"""
-    <a
-      href={~p"/rooms/#{@room}"}
+    <.link
+      navigate={~p"/rooms/#{@room}"}
       class={[
         "flex items-center h-8 text-sm pl-8 pr-3",
         (@active && "bg-slate-300") || "hover:bg-slate-300"
@@ -85,7 +85,7 @@ defmodule SlaxWeb.ChatRoomLive do
       ]}>
         {@room.name}
       </span>
-    </a>
+    </.link>
     """
   end
 end
