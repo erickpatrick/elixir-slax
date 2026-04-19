@@ -10,10 +10,6 @@ defmodule SlaxWeb.ChatRoomLive do
     {:ok, assign(socket, rooms: rooms)}
   end
 
-  def handle_event("toggle-topic", _params, socket) do
-    {:noreply, update(socket, :hide_topic?, &(!&1))}
-  end
-
   def handle_params(params, _url, socket) do
     room =
       case Map.fetch(params, "id") do
@@ -68,6 +64,10 @@ defmodule SlaxWeb.ChatRoomLive do
       </div>
     </Layouts.app>
     """
+  end
+
+  def handle_event("toggle-topic", _params, socket) do
+    {:noreply, update(socket, :hide_topic?, &(!&1))}
   end
 
   attr :active, :boolean, required: true
