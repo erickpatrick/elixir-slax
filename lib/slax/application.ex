@@ -14,6 +14,8 @@ defmodule Slax.Application do
        repos: Application.fetch_env!(:slax, :ecto_repos), skip: skip_migrations?()},
       {DNSCluster, query: Application.get_env(:slax, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Slax.PubSub},
+      # not documented but needs to come after `Pubsub` and before `Endpoint`
+      SlaxWeb.Presence,
       # Start a worker by calling: Slax.Worker.start_link(arg)
       # {Slax.Worker, arg},
       # Start to serve requests, typically the last entry
