@@ -18,6 +18,8 @@ defmodule SlaxWeb.ChatRoomLive do
       OnlineUsers.track(self(), socket.assigns.current_scope.user)
     end
 
+    OnlineUsers.subscribe()
+
     # {:ok, assign(socket, rooms: rooms, timezone: timezone)}
     socket =
       socket
@@ -300,6 +302,12 @@ defmodule SlaxWeb.ChatRoomLive do
 
   def handle_info({:message_deleted, message}, socket) do
     {:noreply, stream_delete(socket, :messages, message)}
+  end
+
+  def handle_info(%{event: "presence_diff", payload: diff}, socket) do
+    online_users = OnlineUsers.update(socket.assigns.online_users, diff)
+
+    {:noreply, assign(socket, online_users: online_users)}
   end
 
   attr :active, :boolean, required: true
