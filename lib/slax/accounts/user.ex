@@ -2,12 +2,27 @@ defmodule Slax.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Slax.Chat.Room
+  alias Slax.Chat.RoomMembership
+
   schema "users" do
     field :email, :string
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
+
+    # Join through tells Ecto to use the Model/Table (RoomMembership)
+    # as the pivot table to connect Rooms and Users. In theory, we
+    # could pass the name of the table directly `room_memberships`
+    # and it would work as well. This means we don't need to have
+    # the RoomMembership schema to make the connection.
+    #
+    # Ecto looks for a foreign key in the given schema/table. In
+    # this case, it will look for room_id. If we want to use
+    # another key, we can use :join_keys and give the proper
+    # key to use in the relationship
+    many_to_many :rooms, Room, join_through: RoomMembership
 
     timestamps(type: :utc_datetime)
   end
