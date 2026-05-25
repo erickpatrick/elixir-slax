@@ -8,6 +8,8 @@ defmodule SlaxWeb.ChatRoomLive do
   alias Slax.Chat.Room
   alias SlaxWeb.OnlineUsers
 
+  import SlaxWeb.RoomComponents
+
   def mount(_params, _session, socket) do
     rooms = Chat.list_joined_rooms_with_unread_counts(socket.assigns.current_scope.user)
     users = Accounts.list_users()
@@ -299,20 +301,7 @@ defmodule SlaxWeb.ChatRoomLive do
       on_cancel={JS.navigate(~p"/rooms/#{@room}")}
     >
       <.header>New chat room</.header>
-      <.form
-        for={@new_room_form}
-        id="room-form"
-        phx-change="validate-room"
-        phx-submit="save-room"
-        class="mt-10 space-y-8"
-      >
-        <.input field={@new_room_form[:name]} type="text" label="Name" phx-debounce />
-        <.input field={@new_room_form[:topic]} type="text" label="Topic" phx-debounce />
-
-        <div>
-          <.button phx-disable-with="Saving..." class="w-full btn btn-primary">Save</.button>
-        </div>
-      </.form>
+      <.room_form form={@new_room_form} />
     </.modal>
     """
   end
