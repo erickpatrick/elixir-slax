@@ -23,20 +23,17 @@ defmodule SlaxWeb.ChatRoomLive do
     OnlineUsers.subscribe()
     Enum.each(rooms, fn {room, _} -> Chat.subscribe_to_room(room) end)
 
-    # {:ok, assign(socket, rooms: rooms, timezone: timezone)}
-    socket =
-      socket
-      |> assign(rooms: rooms, timezone: timezone, users: users)
-      |> assign(online_users: OnlineUsers.list())
-      |> assign_room_form(Chat.change_room(%Room{}))
-      |> stream_configure(:messages,
-        dom_id: fn
-          %Message{id: id} -> "messages-#{id}"
-          :unread_marker -> "messages-unread-marker"
-        end
-      )
-
-    {:ok, socket}
+    socket
+    |> assign(rooms: rooms, timezone: timezone, users: users)
+    |> assign(online_users: OnlineUsers.list())
+    |> assign_room_form(Chat.change_room(%Room{}))
+    |> stream_configure(:messages,
+      dom_id: fn
+        %Message{id: id} -> "messages-#{id}"
+        :unread_marker -> "messages-unread-marker"
+      end
+    )
+    |> ok()
   end
 
   defp assign_room_form(socket, changeset) do
@@ -54,26 +51,26 @@ defmodule SlaxWeb.ChatRoomLive do
 
     Chat.update_last_read_at(room, socket.assigns.current_scope.user)
 
-    {:noreply,
-     socket
-     |> assign(
-       hide_topic?: false,
-       #  messages: messages,
-       joined?: Chat.joined?(room, socket.assigns.current_scope.user),
-       page_title: "#" <> room.name,
-       room: room
-     )
-     |> stream(:messages, messages, reset: true)
-     |> assign_message_form(Chat.change_message(%Message{}, %{}, socket.assigns.current_scope))
-     |> push_event("scroll_messages_to_bottom", %{})
-     |> update(:rooms, fn rooms ->
-       room_id = room.id
+    socket
+    |> assign(
+      hide_topic?: false,
+      #  messages: messages,
+      joined?: Chat.joined?(room, socket.assigns.current_scope.user),
+      page_title: "#" <> room.name,
+      room: room
+    )
+    |> stream(:messages, messages, reset: true)
+    |> assign_message_form(Chat.change_message(%Message{}, %{}, socket.assigns.current_scope))
+    |> push_event("scroll_messages_to_bottom", %{})
+    |> update(:rooms, fn rooms ->
+      room_id = room.id
 
-       Enum.map(rooms, fn
-         {%Room{id: ^room_id} = room, _} -> {room, 0}
-         other -> other
-       end)
-     end)}
+      Enum.map(rooms, fn
+        {%Room{id: ^room_id} = room, _} -> {room, 0}
+        other -> other
+      end)
+    end)
+    |> noreply()
   end
 
   defp maybe_insert_unread_marker(messages, nil), do: messages
@@ -407,13 +404,17 @@ defmodule SlaxWeb.ChatRoomLive do
   end
 
   def handle_event("toggle-topic", _params, socket) do
-    {:noreply, update(socket, :hide_topic?, &(!&1))}
+    socket
+    |> update(:hide_topic?, &(!&1))
+    |> noreply()
   end
 
   def handle_event("validate-message", %{"message" => message_params}, socket) do
     changeset = Chat.change_message(%Message{}, message_params, socket.assigns.current_scope)
 
-    {:noreply, assign_message_form(socket, changeset)}
+    socket
+    |> assign_message_form(changeset)
+    |> noreply()
   end
 
   def handle_event("validate-room", %{"room" => room_params}, socket) do
@@ -422,32 +423,33 @@ defmodule SlaxWeb.ChatRoomLive do
       |> Chat.change_room(room_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign_room_form(socket, changeset)}
+    socket
+    |> assign_room_form(changeset)
+    |> noreply()
   end
 
   def handle_event("submit-message", %{"message" => message_params}, socket) do
     %{current_scope: current_scope, room: room} = socket.assigns
 
-    socket =
-      if Chat.joined?(room, current_scope.user) do
-        case Chat.create_message(room, message_params, current_scope) do
-          {:ok, _message} ->
-            assign_message_form(socket, Chat.change_message(%Message{}, %{}, current_scope))
+    if Chat.joined?(room, current_scope.user) do
+      case Chat.create_message(room, message_params, current_scope) do
+        {:ok, _message} ->
+          assign_message_form(socket, Chat.change_message(%Message{}, %{}, current_scope))
 
-          {:error, changeset} ->
-            assign_message_form(socket, changeset)
-        end
-      else
-        socket
+        {:error, changeset} ->
+          assign_message_form(socket, changeset)
       end
-
-    {:noreply, socket}
+    else
+      socket
+    end
+    |> noreply()
   end
 
   def handle_event("delete-message", %{"id" => id}, socket) do
     Chat.delete_message_by_id(id, socket.assigns.current_scope)
 
-    {:noreply, socket}
+    socket
+    |> noreply()
   end
 
   def handle_event("join-room", _, socket) do
@@ -455,13 +457,12 @@ defmodule SlaxWeb.ChatRoomLive do
     Chat.join_room!(socket.assigns.room, current_user)
     Chat.subscribe_to_room(socket.assigns.room)
 
-    socket =
-      assign(socket,
-        joined?: true,
-        rooms: Chat.list_joined_rooms_with_unread_counts(current_user)
-      )
-
-    {:noreply, socket}
+    socket
+    |> assign(
+      joined?: true,
+      rooms: Chat.list_joined_rooms_with_unread_counts(current_user)
+    )
+    |> noreply()
   end
 
   def handle_event("save-room", %{"room" => room_params}, socket) do
@@ -469,13 +470,15 @@ defmodule SlaxWeb.ChatRoomLive do
       {:ok, room} ->
         Chat.join_room!(room, socket.assigns.current_scope.user)
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Room Created")
-         |> push_navigate(to: ~p"/rooms/#{room}")}
+        socket
+        |> put_flash(:info, "Room Created")
+        |> push_navigate(to: ~p"/rooms/#{room}")
+        |> noreply()
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign_room_form(socket, changeset)}
+        socket
+        |> assign_room_form(changeset)
+        |> noreply()
     end
   end
 
@@ -487,39 +490,38 @@ defmodule SlaxWeb.ChatRoomLive do
     #   socket
     #   |> stream_insert(:messages, message)
     #   |> push_event("scroll_messages_to_bottom", %{})
-    socket =
-      cond do
-        message.room_id == room.id ->
-          Chat.update_last_read_at(room, socket.assigns.current_scope.user)
 
-          socket
-          |> stream_insert(:messages, message)
-          |> push_event("scroll_messages_to_bottom", %{})
+    cond do
+      message.room_id == room.id ->
+        Chat.update_last_read_at(room, socket.assigns.current_scope.user)
 
-        message.user_id != socket.assigns.current_scope.user.id ->
-          update(socket, :rooms, fn rooms ->
-            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-            Enum.map(rooms, fn
-              {%Room{id: id} = room, count} when id == message.room_id -> {room, count + 1}
-              other -> other
-            end)
+        socket
+        |> stream_insert(:messages, message)
+        |> push_event("scroll_messages_to_bottom", %{})
+
+      message.user_id != socket.assigns.current_scope.user.id ->
+        update(socket, :rooms, fn rooms ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          Enum.map(rooms, fn
+            {%Room{id: id} = room, count} when id == message.room_id -> {room, count + 1}
+            other -> other
           end)
+        end)
 
-        true ->
-          socket
-      end
-
-    {:noreply, socket}
+      true ->
+        socket
+    end
+    |> noreply()
   end
 
   def handle_info({:message_deleted, message}, socket) do
-    {:noreply, stream_delete(socket, :messages, message)}
+    socket |> stream_delete(:messages, message)
   end
 
   def handle_info(%{event: "presence_diff", payload: diff}, socket) do
     online_users = OnlineUsers.update(socket.assigns.online_users, diff)
 
-    {:noreply, assign(socket, online_users: online_users)}
+    socket |> assign(online_users: online_users) |> noreply()
   end
 
   attr :active, :boolean, required: true
