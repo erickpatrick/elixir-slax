@@ -28,6 +28,33 @@ defmodule Slax.Accounts.User do
     timestamps(type: :utc_datetime)
   end
 
+  def registration_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:email, :username])
+    |> validate_email(opts)
+    |> validate_username(opts)
+  end
+
+  defp validate_username(changeset, opts) do
+    changeset
+    |> validate_required([:username])
+    |> validate_format(:username, ~r/^[A-Z-a-z0-9-]+$/,
+      message: "can only contain letters, numbers, and dashes"
+    )
+    |> validate_length(:username, max: 20)
+    |> maybe_validate_unique_username(opts)
+  end
+
+  defp maybe_validate_unique_username(changeset, opts) do
+    if Keyword.get(opts, :validate_unique, true) do
+      changeset
+      |> unsafe_validate_unique(:username, Slax.Repo)
+      |> unique_constraint(:username)
+    else
+      changeset
+    end
+  end
+
   @doc """
   A user changeset for registering or changing the email.
 
