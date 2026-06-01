@@ -17,12 +17,6 @@ defmodule SlaxWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", SlaxWeb do
-    pipe_through [:browser, :require_authenticated_user]
-
-    live "/home", PageLive
-  end
-
   # Other scopes may use custom stacks.
   # scope "/api", SlaxWeb do
   #   pipe_through :api
