@@ -68,7 +68,8 @@ defmodule Slax.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:timex, "~> 3.7"}
+      {:timex, "~> 3.7"},
+      {:faker, "~> 0.19.0-alpha.1", only: :dev}
     ]
   end
 
