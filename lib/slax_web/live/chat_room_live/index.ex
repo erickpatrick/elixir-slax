@@ -69,6 +69,7 @@ defmodule SlaxWeb.ChatRoomLive.Index do
       <.live_component
         module={SlaxWeb.ChatRoomLive.FormComponent}
         id="new-room-form-component"
+        current_user={@current_scope.user}
       />
     </.modal>
     """

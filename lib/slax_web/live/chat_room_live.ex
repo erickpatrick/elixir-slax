@@ -8,8 +8,6 @@ defmodule SlaxWeb.ChatRoomLive do
   alias Slax.Chat.Room
   alias SlaxWeb.OnlineUsers
 
-  import SlaxWeb.RoomComponents
-
   def mount(_params, _session, socket) do
     rooms = Chat.list_joined_rooms_with_unread_counts(socket.assigns.current_scope.user)
     users = Accounts.list_users()
@@ -26,19 +24,14 @@ defmodule SlaxWeb.ChatRoomLive do
     socket
     |> assign(rooms: rooms, timezone: timezone, users: users)
     |> assign(online_users: OnlineUsers.list())
-    |> assign_room_form(Chat.change_room(%Room{}))
     |> stream_configure(:messages,
       dom_id: fn
         %Message{id: id} -> "messages-#{id}"
         :unread_marker -> "messages-unread-marker"
-      %Date{} = date -> to_string(date)
+        %Date{} = date -> to_string(date)
       end
     )
     |> ok()
-  end
-
-  defp assign_room_form(socket, changeset) do
-    assign(socket, :new_room_form, to_form(changeset))
   end
 
   def handle_params(params, _url, socket) do
@@ -215,28 +208,28 @@ defmodule SlaxWeb.ChatRoomLive do
           phx-hook=".RoomMessages"
         >
           <%= for {dom_id, message} <- @streams.messages do %>
-          <%= case message do %>
-            <% :unread_marker -> %>
-              <div id={dom_id} class="w-full flex text-red-500 items-center gap-3 pr-5">
-                <div class="w-full h-px grow bg-red-500"></div>
-                <div class="text-sm">New</div>
-              </div>
-            <% %Message{} -> %>
-              <.message
-                current_user={@current_scope.user}
-                dom_id={dom_id}
-                message={message}
-                timezone={@timezone}
-              />
-            <% %Date{} -> %>
-              <div id={dom_id} class="flex flex-col items-center mt-2">
-                <hr class="w-full border-slate-200" />
-                <span class="flex items-center justify-center -mt-3 bg-base-100 h-6 px-3 rounded-full border border-slate-200 text-xs font-semibold mx-auto">
-                  {format_date(message)}
-                </span>
-              </div>
+            <%= case message do %>
+              <% :unread_marker -> %>
+                <div id={dom_id} class="w-full flex text-red-500 items-center gap-3 pr-5">
+                  <div class="w-full h-px grow bg-red-500"></div>
+                  <div class="text-sm">New</div>
+                </div>
+              <% %Message{} -> %>
+                <.message
+                  current_user={@current_scope.user}
+                  dom_id={dom_id}
+                  message={message}
+                  timezone={@timezone}
+                />
+              <% %Date{} -> %>
+                <div id={dom_id} class="flex flex-col items-center mt-2">
+                  <hr class="w-full border-slate-200" />
+                  <span class="flex items-center justify-center -mt-3 bg-base-100 h-6 px-3 rounded-full border border-slate-200 text-xs font-semibold mx-auto">
+                    {format_date(message)}
+                  </span>
+                </div>
+            <% end %>
           <% end %>
-        <% end %>
         </div>
 
         <div :if={@joined?} class="bg-white px-4">
@@ -324,7 +317,11 @@ defmodule SlaxWeb.ChatRoomLive do
       on_cancel={JS.navigate(~p"/rooms/#{@room}")}
     >
       <.header>New chat room</.header>
-      <.room_form form={@new_room_form} />
+      <.live_component
+        module={SlaxWeb.ChatRoomLive.FormComponent}
+        id="new-room-form-component"
+        current_user={@current_scope.user}
+      />
     </.modal>
     """
   end
@@ -468,17 +465,6 @@ defmodule SlaxWeb.ChatRoomLive do
     |> noreply()
   end
 
-  def handle_event("validate-room", %{"room" => room_params}, socket) do
-    changeset =
-      %Room{}
-      |> Chat.change_room(room_params)
-      |> Map.put(:action, :validate)
-
-    socket
-    |> assign_room_form(changeset)
-    |> noreply()
-  end
-
   def handle_event("submit-message", %{"message" => message_params}, socket) do
     %{current_scope: current_scope, room: room} = socket.assigns
 
@@ -516,31 +502,8 @@ defmodule SlaxWeb.ChatRoomLive do
     |> noreply()
   end
 
-  def handle_event("save-room", %{"room" => room_params}, socket) do
-    case Chat.create_room(room_params) do
-      {:ok, room} ->
-        Chat.join_room!(room, socket.assigns.current_scope.user)
-
-        socket
-        |> put_flash(:info, "Room Created")
-        |> push_navigate(to: ~p"/rooms/#{room}")
-        |> noreply()
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        socket
-        |> assign_room_form(changeset)
-        |> noreply()
-    end
-  end
-
   def handle_info({:message_created, message}, socket) do
     room = socket.assigns.room
-
-    # {:noreply, stream_insert(socket, :messages, message)}
-    # socket =
-    #   socket
-    #   |> stream_insert(:messages, message)
-    #   |> push_event("scroll_messages_to_bottom", %{})
 
     cond do
       message.room_id == room.id ->
