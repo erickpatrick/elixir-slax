@@ -101,6 +101,10 @@ defmodule SlaxWeb.ChatRoomLive do
     assign(socket, :new_message_form, to_form(changeset))
   end
 
+  def handle_event("close-profile", _, socket) do
+    {:noreply, assign(socket, :profile, nil)}
+  end
+
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
@@ -192,7 +196,16 @@ defmodule SlaxWeb.ChatRoomLive do
             </div>
           </div>
           <ul class="relative z-10 flex items-center gap-4 justify-end">
-            <li class="text-sm">{username(@current_scope.user.username)}</li>
+            <li class="text-sm">
+              <.link
+                class="flex gap-4 items-center"
+                phx-click="show-profile"
+                phx-value-user-id={@current_scope.user.id}
+              >
+                <img src={~p"/images/one_ring.jpg"} class="h-8 w-8 rounded" />
+                <span class="hover:underline">{@current_scope.user.username}</span>
+              </.link>
+            </li>
             <li><.link href={~p"/users/settings"} class="text-sm font-semibold">Settings</.link></li>
             <li>
               <.link href={~p"/users/log-out"} method="delete" class="text-sm font-semibold">
@@ -283,6 +296,9 @@ defmodule SlaxWeb.ChatRoomLive do
           </div>
         </div>
       </div>
+      <%= if assigns[:profile] do %>
+        <.live_component id="profile" module={SlaxWeb.ChatRoomLive.ProfileComponent} user={@profile} />
+      <% end %>
     </Layouts.app>
 
     <script :type={Phoenix.LiveView.ColocatedHook} name=".RoomMessages">
@@ -343,11 +359,20 @@ defmodule SlaxWeb.ChatRoomLive do
       >
         <.icon name="hero-trash" class="h-4 w-4" />
       </button>
-      <img class="h-10 w-10 rounded shrink-0" src={~p"/images/one_ring.jpg"} />
+      <img
+        class="h-10 w-10 rounded cursor-pointer"
+        phx-click="show-profile"
+        phx-value-user-id={@message.user.id}
+        src={~p"/images/one_ring.jpg"}
+      />
       <div class="ml-2">
         <div class="-mt-1">
-          <.link class="text-sm font-semibold hover:underline">
-            <span>{username(@message.user.username)}</span>
+          <.link
+            phx-click="show-profile"
+            phx-value-user-id={@message.user.id}
+            class="text-sm font-semibold hover:underline"
+          >
+            {username(@message.user.username)}
           </.link>
           <span :if={@timezone} class="ml-1 text-xs text-gray-500">
             {message_timestamp(@message, @timezone)}
@@ -449,6 +474,11 @@ defmodule SlaxWeb.ChatRoomLive do
       </button>
     </div>
     """
+  end
+
+  def handle_event("show-profile", %{"user-id" => user_id}, socket) do
+    user = Accounts.get_user!(user_id)
+    {:noreply, assign(socket, :profile, user)}
   end
 
   def handle_event("toggle-topic", _params, socket) do
