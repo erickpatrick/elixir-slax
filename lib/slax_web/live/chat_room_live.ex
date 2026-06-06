@@ -101,10 +101,6 @@ defmodule SlaxWeb.ChatRoomLive do
     assign(socket, :new_message_form, to_form(changeset))
   end
 
-  def handle_event("close-profile", _, socket) do
-    {:noreply, assign(socket, :profile, nil)}
-  end
-
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash}>
@@ -476,9 +472,8 @@ defmodule SlaxWeb.ChatRoomLive do
     """
   end
 
-  def handle_event("show-profile", %{"user-id" => user_id}, socket) do
-    user = Accounts.get_user!(user_id)
-    {:noreply, assign(socket, :profile, user)}
+  def handle_event("close-profile", _, socket) do
+    {:noreply, assign(socket, :profile, nil)}
   end
 
   def handle_event("toggle-topic", _params, socket) do
@@ -517,6 +512,11 @@ defmodule SlaxWeb.ChatRoomLive do
 
     socket
     |> noreply()
+  end
+
+  def handle_event("show-profile", %{"user-id" => user_id}, socket) do
+    user = Accounts.get_user!(user_id)
+    {:noreply, assign(socket, :profile, user)}
   end
 
   def handle_event("join-room", _, socket) do
