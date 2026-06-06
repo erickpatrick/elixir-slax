@@ -13,6 +13,8 @@ defmodule Slax.Accounts.User do
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
 
+    field :avatar_path, :string
+
     # Join through tells Ecto to use the Model/Table (RoomMembership)
     # as the pivot table to connect Rooms and Users. In theory, we
     # could pass the name of the table directly `room_memberships`
@@ -171,5 +173,10 @@ defmodule Slax.Accounts.User do
   def valid_password?(_, _) do
     Bcrypt.no_user_verify()
     false
+  end
+
+  def avatar_changeset(user, attrs \\ %{}) do
+    user
+    |> cast(attrs, [:avatar_path])
   end
 end
