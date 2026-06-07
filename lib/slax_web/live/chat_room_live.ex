@@ -21,6 +21,9 @@ defmodule SlaxWeb.ChatRoomLive do
     end
 
     OnlineUsers.subscribe()
+
+    Accounts.subscribe_to_user_avatars()
+
     Enum.each(rooms, fn {room, _} -> Chat.subscribe_to_room(room) end)
 
     socket
@@ -311,6 +314,14 @@ defmodule SlaxWeb.ChatRoomLive do
           this.handleEvent("scroll_messages_to_bottom", () => {
             this.el.scrollTop = this.el.scrollHeight;
           });
+
+          this.handleEvent("update_avatar", ({user_id, avatar_path}) => {
+            const avatars = this.el.querySelectorAll(`img[data-user-avatar-id="${user_id}"]`);
+
+            avatars.forEach(function(avatar) {
+              avatar.src = `/uploads/${avatar_path}`;
+            });
+          });
         }
       }
     </script>
@@ -573,6 +584,31 @@ defmodule SlaxWeb.ChatRoomLive do
     online_users = OnlineUsers.update(socket.assigns.online_users, diff)
 
     socket |> assign(online_users: online_users) |> noreply()
+  end
+
+  def handle_info({:updated_avatar, user}, socket) do
+    socket
+    |> maybe_update_profile(user)
+    |> maybe_update_current_user(user)
+    |> push_event("update_avatar", %{user_id: user.id, avatar_path: user.avatar_path})
+    |> noreply()
+  end
+
+  defp maybe_update_current_user(socket, user) do
+    if socket.assigns.current_scope.user.id == user.id do
+      updated_scope = %{socket.assigns.current_scope | user: user}
+      assign(socket, :current_scope, updated_scope)
+    else
+      socket
+    end
+  end
+
+  defp maybe_update_profile(socket, user) do
+    if socket.assigns[:profile] && socket.assigns.profile.id == user.id do
+      assign(socket, :profile, user)
+    else
+      socket
+    end
   end
 
   attr :active, :boolean, required: true
