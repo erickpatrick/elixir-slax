@@ -2,6 +2,7 @@ defmodule Slax.Chat do
   alias Slax.Accounts.Scope
   alias Slax.Accounts.User
   alias Slax.Chat.Message
+  alias Slax.Chat.Reply
   alias Slax.Chat.Room
   alias Slax.Chat.RoomMembership
   alias Slax.Repo
@@ -72,8 +73,14 @@ defmodule Slax.Chat do
     Message
     |> where([m], m.room_id == ^room_id)
     |> order_by([m], asc: :inserted_at, asc: :id)
-    |> preload(:user)
+    |> preload_message_user_and_replies()
     |> Repo.all()
+  end
+
+  defp preload_message_user_and_replies(message_query) do
+    replies_query = from r in Reply, order_by: [asc: :inserted_at, asc: :id]
+
+    preload(message_query, [:user, replies: ^{replies_query, [:user]}])
   end
 
   def change_message(message, attrs \\ %{}, scope) do
@@ -82,7 +89,7 @@ defmodule Slax.Chat do
 
   def create_message(room, attrs, scope) do
     with {:ok, message} <-
-           %Message{room: room}
+           %Message{room: room, replies: []}
            |> Message.changeset(attrs, scope)
            |> Repo.insert() do
       message = Repo.preload(message, :user)
@@ -164,7 +171,7 @@ defmodule Slax.Chat do
   def get_message!(id) do
     Message
     |> where([m], m.id == ^id)
-    |> preload(:user)
+    |> preload_message_user_and_replies()
     |> Repo.one!()
   end
 end
