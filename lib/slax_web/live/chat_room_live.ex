@@ -263,7 +263,7 @@ defmodule SlaxWeb.ChatRoomLive do
               name={@new_message_form[:body].name}
               placeholder={"Message ##{@room.name}"}
               phx-debounce
-              phx-hook=".ChatMessageTextArea"
+              phx-hook="ChatMessageTextArea"
               rows="1"
             >{Phoenix.HTML.Form.normalize_value("textarea", @new_message_form[:body].value)}</textarea>
             <button class="shrink flex items-center justify-center h-6 w-6 rounded hover:bg-slate-200">
@@ -336,21 +336,6 @@ defmodule SlaxWeb.ChatRoomLive do
             avatars.forEach(function(avatar) {
               avatar.src = `/uploads/${avatar_path}`;
             });
-          });
-        }
-      }
-    </script>
-
-    <script :type={Phoenix.LiveView.ColocatedHook} name=".ChatMessageTextArea">
-      export default {
-        mounted() {
-          this.el.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              const form = document.getElementById('new-message-form');
-
-              this.el.dispatchEvent(new Event("change", {bubbles: true, cancelable:true }));
-              form.dispatchEvent(new Event("submit", {bubbles: true, cancelable:true }));
-            }
           });
         }
       }
@@ -576,7 +561,11 @@ defmodule SlaxWeb.ChatRoomLive do
   end
 
   def handle_info({:new_reply, message}, socket) do
-    socket
+    if socket.assigns[:thread] && socket.assigns.thread.id == message.id do
+      push_event(socket, "scroll_messages_to_bottom", %{})
+    else
+      socket
+    end
     |> refresh_message(message)
     |> noreply()
   end
