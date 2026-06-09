@@ -312,7 +312,9 @@ defmodule SlaxWeb.ChatRoomLive do
         <.live_component
           id="thread"
           module={ThreadComponent}
+          current_scope={@current_scope}
           current_user={@current_scope.user}
+          joined?={@joined?}
           message={@thread}
           room={@room}
           timezone={@timezone}
@@ -508,7 +510,7 @@ defmodule SlaxWeb.ChatRoomLive do
   end
 
   def handle_event("delte-message", %{"id" => id, "type" => "Reply"}, socket) do
-    Chat.detele_reply_by_id(id, socket.assigns.current_scope.user)
+    Chat.delete_reply_by_id(id, socket.assigns.current_scope.user)
 
     {:noreply, socket}
   end
@@ -558,7 +560,7 @@ defmodule SlaxWeb.ChatRoomLive do
   end
 
   def handle_info({:message_deleted, message}, socket) do
-    socket |> stream_delete(:messages, message)
+    socket |> stream_delete(:messages, message) |> noreply()
   end
 
   def handle_info(%{event: "presence_diff", payload: diff}, socket) do
@@ -568,6 +570,26 @@ defmodule SlaxWeb.ChatRoomLive do
   end
 
   def handle_info({:deleted_reply, message}, socket) do
+    socket
+    |> refresh_message(message)
+    |> noreply()
+  end
+
+  def handle_info({:new_reply, message}, socket) do
+    socket
+    |> refresh_message(message)
+    |> noreply()
+  end
+
+  def handle_info({:updated_avatar, user}, socket) do
+    socket
+    |> maybe_update_profile(user)
+    |> maybe_update_current_user(user)
+    |> push_event("update_avatar", %{user_id: user.id, avatar_path: user.avatar_path})
+    |> noreply()
+  end
+
+  defp refresh_message(socket, message) do
     if message.room_id == socket.assigns.room.id do
       socket = stream_insert(socket, :messages, message)
 
@@ -579,15 +601,6 @@ defmodule SlaxWeb.ChatRoomLive do
     else
       socket
     end
-    |> noreply()
-  end
-
-  def handle_info({:updated_avatar, user}, socket) do
-    socket
-    |> maybe_update_profile(user)
-    |> maybe_update_current_user(user)
-    |> push_event("update_avatar", %{user_id: user.id, avatar_path: user.avatar_path})
-    |> noreply()
   end
 
   defp maybe_update_current_user(socket, user) do
