@@ -2,6 +2,7 @@ defmodule Slax.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias Slax.Chat.Reaction
   alias Slax.Chat.Room
   alias Slax.Chat.RoomMembership
 
@@ -14,6 +15,8 @@ defmodule Slax.Accounts.User do
     field :authenticated_at, :utc_datetime, virtual: true
 
     field :avatar_path, :string
+
+    has_many :reactions, Reaction
 
     # Join through tells Ecto to use the Model/Table (RoomMembership)
     # as the pivot table to connect Rooms and Users. In theory, we
